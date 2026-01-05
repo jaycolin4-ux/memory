@@ -309,7 +309,8 @@ async function loadData() {
         const rows = csvText.match(/(".*?"|[^"\r\n]+)(?=\r\n|\n|\r|$)/g) || [];
         
         // Пропускаем заголовок
-        const dataRows = csvText.split(/\r?\n/).slice(1);
+        // Замени старый split(',') на это внутри map:
+const cols = row.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^$)/g) || [];
 
         exhibits = dataRows.map(row => {
             // Умное разделение CSV, которое игнорирует запятые внутри кавычек
@@ -464,6 +465,7 @@ window.onload = () => {
 
 
 </html>
+
 
 
 
