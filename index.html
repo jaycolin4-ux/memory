@@ -307,19 +307,21 @@ async function loadData() {
         const csvText = await response.text();
         const rows = csvText.split('\n').slice(1);
 
-        exhibits = rows.map(row => {
-            const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            const clean = (val) => val ? val.replace(/^"|"$/g, '').trim() : '';
-            return {
-                id: clean(cols[0]),
-                title: clean(cols[1]),
-                author: clean(cols[2]),
-                img: clean(cols[3]),
-                audio: clean(cols[4]),
-                desc: clean(cols[5]),
-                secret: clean(cols[6])
-            };
-        }).filter(ex => ex.id && ex.title);
+      exhibits = rows.map(row => {
+    // Используем более простую логику разделения для CSV из Google
+    const cols = row.split(','); 
+    const clean = (val) => val ? val.replace(/^"|"$/g, '').trim() : '';
+    
+    return {
+        id: clean(cols[0]),
+        title: clean(cols[1]),
+        author: clean(cols[2]),
+        img: clean(cols[3]),    // Ссылка на картинку из 4-го столбца (D)
+        audio: clean(cols[4]),  // Ссылка на аудио из 5-го столбца (E)
+        desc: clean(cols[5]),
+        secret: clean(cols[6])
+    };
+}).filter(ex => ex.id && ex.title);
 
         renderHome(exhibits);
     } catch (e) {
@@ -454,4 +456,5 @@ window.onload = () => {
 
 
 </html>
+
 
