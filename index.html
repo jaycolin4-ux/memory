@@ -296,7 +296,7 @@
             </div>
         </div>
     </div>
-    <script>
+<script>
 let exhibits = [];
 const spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSh-Mi4ZmM4ZZZwXsjAkVDUNeRQJPhe_kzWWR0p4GzScVUnkzR4Ci4t_GsSSz22Z0T886mnbJENA21Q/pub?gid=0&single=true&output=csv';
 
@@ -305,15 +305,12 @@ async function loadData() {
         const response = await fetch(`${spreadsheetUrl}&cb=${Date.now()}`);
         const csvText = await response.text();
         
-        // Разбиваем текст на строки, учитывая переносы внутри кавычек
-        const rows = csvText.match(/(".*?"|[^"\r\n]+)(?=\r\n|\n|\r|$)/g) || [];
-        
-        // Пропускаем заголовок
-        // Замени старый split(',') на это внутри map:
-const cols = row.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^$)/g) || [];
+        // Разбиваем на строки по символу переноса, но игнорируем переносы внутри кавычек
+        const allRows = csvText.split(/\r?\n/);
+        const dataRows = allRows.slice(1); // Убираем заголовок
 
         exhibits = dataRows.map(row => {
-            // Умное разделение CSV, которое игнорирует запятые внутри кавычек
+            // Умное разделение CSV: запятая считается разделителем, только если она не внутри кавычек
             const cols = row.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^$)/g) || [];
             const clean = (val) => val ? val.replace(/^"|"$/g, '').trim() : '';
             
@@ -328,7 +325,7 @@ const cols = row.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^$)/g) || [];
             };
         }).filter(ex => ex.id && ex.title);
 
-        console.log("Загруженные экспонаты:", exhibits); // Проверка в консоли (F12)
+        console.log("Загруженные экспонаты:", exhibits);
         renderHome(exhibits);
     } catch (e) {
         console.error('Ошибка загрузки:', e);
@@ -386,7 +383,6 @@ function openExhibit(id) {
 
     if (window.navigator.vibrate) window.navigator.vibrate(40);
 
-    // Заполнение данных
     document.getElementById('ex-title').innerText = ex.title;
     document.getElementById('ex-author').innerText = ex.author;
     document.getElementById('ex-desc').innerText = ex.desc;
@@ -394,7 +390,6 @@ function openExhibit(id) {
     document.getElementById('ex-img').src = ex.img;
     document.getElementById('ex-audio').src = ex.audio;
 
-    // Сброс анимаций
     document.getElementById('photo-box').classList.remove('alive');
     document.getElementById('folder').classList.remove('open');
     document.getElementById('seal').classList.remove('broken');
@@ -459,12 +454,13 @@ window.onload = () => {
     }
     setInterval(loadData, 30000);
 };
-    </script>
+</script>
 
 </body>
 
 
 </html>
+
 
 
 
