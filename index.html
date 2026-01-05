@@ -297,32 +297,37 @@
         </div>
     </div>
     <script>
-
-     let exhibits = [];
+let exhibits = [];
 const spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSh-Mi4ZmM4ZZZwXsjAkVDUNeRQJPhe_kzWWR0p4GzScVUnkzR4Ci4t_GsSSz22Z0T886mnbJENA21Q/pub?gid=0&single=true&output=csv';
 
 async function loadData() {
     try {
         const response = await fetch(`${spreadsheetUrl}&cb=${Date.now()}`);
         const csvText = await response.text();
-        const rows = csvText.split('\n').slice(1);
+        
+        // Разбиваем текст на строки, учитывая переносы внутри кавычек
+        const rows = csvText.match(/(".*?"|[^"\r\n]+)(?=\r\n|\n|\r|$)/g) || [];
+        
+        // Пропускаем заголовок
+        const dataRows = csvText.split(/\r?\n/).slice(1);
 
-      exhibits = rows.map(row => {
-    // Используем более простую логику разделения для CSV из Google
-    const cols = row.split(','); 
-    const clean = (val) => val ? val.replace(/^"|"$/g, '').trim() : '';
-    
-    return {
-        id: clean(cols[0]),
-        title: clean(cols[1]),
-        author: clean(cols[2]),
-        img: clean(cols[3]),    // Ссылка на картинку из 4-го столбца (D)
-        audio: clean(cols[4]),  // Ссылка на аудио из 5-го столбца (E)
-        desc: clean(cols[5]),
-        secret: clean(cols[6])
-    };
-}).filter(ex => ex.id && ex.title);
+        exhibits = dataRows.map(row => {
+            // Умное разделение CSV, которое игнорирует запятые внутри кавычек
+            const cols = row.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^$)/g) || [];
+            const clean = (val) => val ? val.replace(/^"|"$/g, '').trim() : '';
+            
+            return {
+                id: clean(cols[0]),
+                title: clean(cols[1]),
+                author: clean(cols[2]),
+                img: clean(cols[3]),
+                audio: clean(cols[4]),
+                desc: clean(cols[5]),
+                secret: clean(cols[6])
+            };
+        }).filter(ex => ex.id && ex.title);
 
+        console.log("Загруженные экспонаты:", exhibits); // Проверка в консоли (F12)
         renderHome(exhibits);
     } catch (e) {
         console.error('Ошибка загрузки:', e);
@@ -333,12 +338,15 @@ function renderHome(dataToRender) {
     const listEl = document.getElementById('list');
     const data = dataToRender || exhibits;
     if (data.length === 0) {
-        listEl.innerHTML = '<div class="text-center opacity-30 py-10 italic">Загрузка архива...</div>';
+        listEl.innerHTML = '<div class="text-center opacity-30 py-10 italic">Архив пуст или загружается...</div>';
         return;
     }
     listEl.innerHTML = data.map(ex => `
         <div onclick="openExhibit('${ex.id}')" class="fade-in-up bg-[#151515] p-5 rounded-2xl flex items-center gap-4 border border-white/5 active:scale-[0.98] transition-all">
-            <img src="${ex.img}" class="w-16 h-16 object-cover grayscale rounded-xl shadow-lg" onerror="this.src='https://via.placeholder.com/100?text=Нет+фото'">
+            <div class="w-16 h-16 flex-shrink-0">
+                <img src="${ex.img}" class="w-full h-full object-cover grayscale rounded-xl shadow-lg" 
+                     onerror="this.src='https://via.placeholder.com/100?text=Ошибка+фото'">
+            </div>
             <div class="flex-1 text-left">
                 <h3 class="font-bold text-base uppercase tracking-tight text-white leading-tight">${ex.title}</h3>
                 <p class="text-[11px] text-[#8b0000] mt-1 font-medium tracking-wider uppercase opacity-80">${ex.author}</p>
@@ -358,16 +366,18 @@ function filterExhibits() {
 
 function showPage(id) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+    const targetPage = document.getElementById(id);
+    if (targetPage) targetPage.classList.add('active');
+    
     if (id === 'scanner') startScanner(); else stopScanner();
 }
 
 function openExhibit(id) {
-    // Чистим ID от возможных пробелов и приводим к нижнему регистру для надежности
     const targetId = String(id).trim().toLowerCase();
     const ex = exhibits.find(e => String(e.id).trim().toLowerCase() === targetId);
     
     if (!ex) {
+        console.error("ID не найден:", targetId);
         alert("Объект " + targetId + " не найден в архиве.");
         showPage('home');
         return;
@@ -375,6 +385,7 @@ function openExhibit(id) {
 
     if (window.navigator.vibrate) window.navigator.vibrate(40);
 
+    // Заполнение данных
     document.getElementById('ex-title').innerText = ex.title;
     document.getElementById('ex-author').innerText = ex.author;
     document.getElementById('ex-desc').innerText = ex.desc;
@@ -382,6 +393,7 @@ function openExhibit(id) {
     document.getElementById('ex-img').src = ex.img;
     document.getElementById('ex-audio').src = ex.audio;
 
+    // Сброс анимаций
     document.getElementById('photo-box').classList.remove('alive');
     document.getElementById('folder').classList.remove('open');
     document.getElementById('seal').classList.remove('broken');
@@ -413,18 +425,15 @@ function startScanner() {
         { facingMode: "environment" }, 
         { fps: 20, qrbox: 250 }, 
         (decodedText) => {
-            // Эффекты успеха
             new Audio('https://www.soundjay.com/mechanical/camera-shutter-click-01.mp3').play().catch(() => {});
             document.body.style.filter = "brightness(2)";
             setTimeout(() => document.body.style.filter = "brightness(1)", 150);
             
             stopScanner(); 
 
-            // ОБРАБОТКА ТЕКСТА ИЗ QR
             let rawData = decodedText.trim();
             let finalId = rawData;
 
-            // Если в QR зашита ссылка типа http://mysite.com/?id=ex_01
             if (rawData.includes('id=')) {
                 finalId = rawData.split('id=').pop().split('&')[0];
             }
@@ -445,8 +454,7 @@ window.onload = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const directId = urlParams.get('id');
     if (directId) {
-        // Небольшая задержка, чтобы данные успели загрузиться
-        setTimeout(() => openExhibit(directId), 1000);
+        setTimeout(() => openExhibit(directId), 1500);
     }
     setInterval(loadData, 30000);
 };
@@ -456,5 +464,6 @@ window.onload = () => {
 
 
 </html>
+
 
 
