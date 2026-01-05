@@ -388,6 +388,45 @@ function openExhibit(id) {
     document.getElementById('ex-desc').innerText = ex.desc;
     document.getElementById('ex-secret').innerText = ex.secret;
     document.getElementById('ex-img').src = ex.img;
+
+    // --- ИСПРАВЛЕНИЕ АУДИО ---
+    let audioUrl = ex.audio;
+    
+    // Преобразование Google Drive
+    if (audioUrl.includes('drive.google.com')) {
+        let fileId = "";
+        if (audioUrl.includes('id=')) {
+            fileId = audioUrl.split('id=')[1].split('&')[0];
+        } else {
+            fileId = audioUrl.split('/d/')[1].split('/')[0];
+        }
+        audioUrl = `https://docs.google.com/uc?export=open&id=${fileId}`;
+    }
+    
+    // Преобразование Dropbox
+    if (audioUrl.includes('dropbox.com')) {
+        audioUrl = audioUrl.replace('?dl=0', '').replace('?dl=1', '') + '?raw=1';
+    }
+
+    const player = document.getElementById('ex-audio');
+    player.src = audioUrl;
+    player.load(); // Перезагружаем плеер для применения новой ссылки
+    // ------------------------
+
+    document.getElementById('photo-box').classList.remove('alive');
+    document.getElementById('folder').classList.remove('open');
+    document.getElementById('seal').classList.remove('broken');
+
+    showPage('details');
+}
+
+    if (window.navigator.vibrate) window.navigator.vibrate(40);
+
+    document.getElementById('ex-title').innerText = ex.title;
+    document.getElementById('ex-author').innerText = ex.author;
+    document.getElementById('ex-desc').innerText = ex.desc;
+    document.getElementById('ex-secret').innerText = ex.secret;
+    document.getElementById('ex-img').src = ex.img;
     document.getElementById('ex-audio').src = ex.audio;
 
     document.getElementById('photo-box').classList.remove('alive');
@@ -460,6 +499,7 @@ window.onload = () => {
 
 
 </html>
+
 
 
 
