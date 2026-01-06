@@ -44,34 +44,18 @@
         .folder.open { max-height: 2000px; opacity: 1; padding: 25px; margin-top: 40px; border: 1px solid #bba689; }
         .seal { width: 85px; height: 85px; background: #900; border: 4px double #500; border-radius: 50%; color: white; font-size: 9px; font-weight: bold; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; margin: 0 auto; position: relative; z-index: 20; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4); }
 
+        /* ФОТО И ТЕКСТ */
         .photo-box { position: relative; overflow: hidden; height: 38vh; background: #000; }
         .photo-main { filter: grayscale(1) sepia(0.2); transition: 2s; width: 100%; height: 100%; object-fit: cover; }
         .alive .photo-main { filter: grayscale(0) sepia(0); transform: scale(1.05); }
-        /* ЗАМЕНИ ЭТОТ КЛАСС В STYLE */
-.photo-box { 
-    position: relative; 
-    overflow: hidden; 
-    height: 38vh; 
-    background: #000; 
-}
-
-/* ДОБАВЬ ИЛИ ОБНОВИ ЭТОТ СЛОЙ */
-.photo-box::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    /* Затемнение: снизу плотное, к середине прозрачное */
-    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
-    pointer-events: none;
-}
-
-.photo-main { 
-    filter: grayscale(1) sepia(0.2); 
-    transition: 2s; 
-    width: 100%; 
-    height: 100%; 
-    object-fit: cover; 
-}
+        
+        /* Градиент под текстом, чтобы он читался */
+        .photo-box::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
+            pointer-events: none;
+        }
+        #ex-title, #ex-author { position: relative; z-index: 10; text-shadow: 2px 2px 8px rgba(0,0,0,0.8); }
     </style>
 </head>
 <body>
@@ -117,11 +101,10 @@
     <div id="details" class="page">
         <div id="photo-box" class="photo-box" onclick="this.classList.toggle('alive')">
             <img id="ex-img" class="photo-main" src="">
-            <div class="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-black/40"></div>
-            <button onclick="closeDetails()" class="absolute top-6 left-6 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white">✕</button>
-            <div class="absolute bottom-6 left-6 right-6">
+            <button onclick="closeDetails()" class="absolute top-6 left-6 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white z-20">✕</button>
+            <div class="absolute bottom-6 left-6 right-6 z-10">
                 <h2 id="ex-title" class="text-3xl font-bold uppercase leading-tight"></h2>
-                <p id="ex-author" class="text-[#8b0000] font-bold text-xs uppercase mt-1 tracking-widest"></p>
+                <p id="ex-author" class="text-[#ff3333] font-bold text-xs uppercase mt-1 tracking-widest"></p>
             </div>
         </div>
         
@@ -171,7 +154,7 @@
                     <div class="w-16 h-16 flex-shrink-0">
                         <img src="${ex.img}" class="w-full h-full object-cover grayscale rounded-xl">
                     </div>
-                    <div class="flex-1">
+                    <div class="flex-1 text-left">
                         <h3 class="font-bold text-base uppercase text-white leading-tight">${ex.title}</h3>
                         <p class="text-[10px] text-[#8b0000] mt-1 font-bold uppercase tracking-wider">${ex.author}</p>
                     </div>
@@ -189,14 +172,20 @@
             document.getElementById('ex-secret').innerText = ex.secret;
             document.getElementById('ex-img').src = ex.img;
 
-            // ФИКС ЗВУКА: Смена download на media для стабильности
-            const container = document.getElementById('player-container');
+            // ОБРАБОТКА ССЫЛКИ ЗВУКА
             let aUrl = ex.audio;
-            if (aUrl.includes('drive.google.com')) {
+            if (aUrl.includes('dropbox.com')) {
+                aUrl = aUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com').split('?')[0];
+            } else if (aUrl.includes('drive.google.com')) {
                 const fId = aUrl.match(/[-\w]{25,}/);
                 if (fId) aUrl = `https://docs.google.com/uc?export=media&id=${fId[0]}`;
             }
-            container.innerHTML = `<audio id="ex-audio" controls class="w-full h-8" preload="auto"><source src="${aUrl}" type="audio/mpeg"></audio>`;
+
+            // ПЕРЕЗАГРУЗКА ПЛЕЕРА
+            const container = document.getElementById('player-container');
+            container.innerHTML = `<audio id="ex-audio" controls class="w-full h-8" preload="auto">
+                                      <source src="${aUrl}" type="audio/mpeg">
+                                   </audio>`;
             
             const p = document.getElementById('ex-audio');
             p.load();
@@ -244,4 +233,3 @@
     </script>
 </body>
 </html>
-
