@@ -296,54 +296,69 @@
             </div>
         </div>
     </div>
-<script>
-let exhibits = [];
+<script>let exhibits = [];
 const spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSh-Mi4ZmM4ZZZwXsjAkVDUNeRQJPhe_kzWWR0p4GzScVUnkzR4Ci4t_GsSSz22Z0T886mnbJENA21Q/pub?gid=0&single=true&output=csv';
+
+// Функция парсинга CSV строки
+function parseCSV(text) {
+    const p = /^\s*("([^"]*(?:""[^"]*)*)"|([^,]*))/;
+    const result = [];
+    let line = text;
+    while (line.length > 0) {
+        const m = line.match(p);
+        if (m) {
+            result.push(m[2] ? m[2].replace(/""/g, '"') : m[3].trim());
+            line = line.substring(m[0].length);
+            if (line.startsWith(',')) line = line.substring(1);
+        } else break;
+    }
+    return result;
+}
 
 async function loadData() {
     try {
         const response = await fetch(`${spreadsheetUrl}&cb=${Date.now()}`);
         const csvText = await response.text();
+        const lines = csvText.split(/\r?\n/);
         
-        // Разбиваем на строки по символу переноса, но игнорируем переносы внутри кавычек
-        const allRows = csvText.split(/\r?\n/);
-        const dataRows = allRows.slice(1); // Убираем заголовок
-
-        exhibits = dataRows.map(row => {
-            // Умное разделение CSV: запятая считается разделителем, только если она не внутри кавычек
-            const cols = row.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^$)/g) || [];
-            const clean = (val) => val ? val.replace(/^"|"$/g, '').trim() : '';
-            
+        exhibits = lines.slice(1).map(line => {
+            const cols = parseCSV(line);
             return {
-                id: clean(cols[0]),
-                title: clean(cols[1]),
-                author: clean(cols[2]),
-                img: clean(cols[3]),
-                audio: clean(cols[4]),
-                desc: clean(cols[5]),
-                secret: clean(cols[6])
+                id: cols[0],
+                title: cols[1],
+                author: cols[2],
+                img: cols[3],
+                audio: cols[4],
+                desc: cols[5],
+                secret: cols[6]
             };
         }).filter(ex => ex.id && ex.title);
 
-        console.log("Загруженные экспонаты:", exhibits);
-        renderHome(exhibits);
+        console.log("Загружено:", exhibits);
+        
+        // Рендерим только если мы на главной странице
+        if (document.getElementById('home').classList.contains('active')) {
+            renderHome();
+        }
     } catch (e) {
-        console.error('Ошибка загрузки:', e);
+        console.error('Ошибка загрузки данных:', e);
     }
 }
 
 function renderHome(dataToRender) {
     const listEl = document.getElementById('list');
     const data = dataToRender || exhibits;
+    
     if (data.length === 0) {
-        listEl.innerHTML = '<div class="text-center opacity-30 py-10 italic">Архив пуст или загружается...</div>';
+        listEl.innerHTML = '<div class="text-center opacity-30 py-10 italic">Загрузка архива...</div>';
         return;
     }
+
     listEl.innerHTML = data.map(ex => `
         <div onclick="openExhibit('${ex.id}')" class="fade-in-up bg-[#151515] p-5 rounded-2xl flex items-center gap-4 border border-white/5 active:scale-[0.98] transition-all">
             <div class="w-16 h-16 flex-shrink-0">
                 <img src="${ex.img}" class="w-full h-full object-cover grayscale rounded-xl shadow-lg" 
-                     onerror="this.src='https://via.placeholder.com/100?text=Ошибка+фото'">
+                     onerror="this.src='https://via.placeholder.com/100?text=Нет+фото'">
             </div>
             <div class="flex-1 text-left">
                 <h3 class="font-bold text-base uppercase tracking-tight text-white leading-tight">${ex.title}</h3>
@@ -354,6 +369,43 @@ function renderHome(dataToRender) {
     `).join('');
 }
 
+function openExhibit(id) {
+    const ex = exhibits.find(e => String(e.id).trim() === String(id).trim());
+    
+    if (!ex) {
+        console.error("ID не найден:", id);
+        return;
+    }
+
+    if (window.navigator.vibrate) window.navigator.vibrate(40);
+
+    // Заполнение данных
+    document.getElementById('ex-title').innerText = ex.title;
+    document.getElementById('ex-author').innerText = ex.author;
+    document.getElementById('ex-desc').innerText = ex.desc;
+    document.getElementById('ex-secret').innerText = ex.secret;
+    document.getElementById('ex-img').src = ex.img;
+
+    // Обработка аудио ссылки
+    let audioUrl = ex.audio;
+    if (audioUrl.includes('drive.google.com')) {
+        const fileId = audioUrl.includes('id=') ? audioUrl.split('id=')[1].split('&')[0] : audioUrl.split('/d/')[1].split('/')[0];
+        audioUrl = `https://docs.google.com/uc?export=open&id=${fileId}`;
+    }
+
+    const player = document.getElementById('ex-audio');
+    player.src = audioUrl;
+    player.load();
+
+    // Сброс состояния секретной папки
+    document.getElementById('photo-box').classList.remove('alive');
+    document.getElementById('folder').classList.remove('open');
+    document.getElementById('seal').classList.remove('broken');
+
+    showPage('details');
+}
+
+// Остальные функции (filterExhibits, showPage, openSecret, и т.д.) остаются без изменений
 function filterExhibits() {
     const q = document.getElementById('searchInput').value.toLowerCase();
     const filtered = exhibits.filter(ex =>
@@ -364,82 +416,13 @@ function filterExhibits() {
 
 function showPage(id) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const targetPage = document.getElementById(id);
-    if (targetPage) targetPage.classList.add('active');
-    
+    document.getElementById(id).classList.add('active');
     if (id === 'scanner') startScanner(); else stopScanner();
 }
 
-function openExhibit(id) {
-    const targetId = String(id).trim().toLowerCase();
-    const ex = exhibits.find(e => String(e.id).trim().toLowerCase() === targetId);
-    
-    if (!ex) {
-        console.error("ID не найден:", targetId);
-        alert("Объект " + targetId + " не найден в архиве.");
-        showPage('home');
-        return;
-    }
-
-    if (window.navigator.vibrate) window.navigator.vibrate(40);
-
-    document.getElementById('ex-title').innerText = ex.title;
-    document.getElementById('ex-author').innerText = ex.author;
-    document.getElementById('ex-desc').innerText = ex.desc;
-    document.getElementById('ex-secret').innerText = ex.secret;
-    document.getElementById('ex-img').src = ex.img;
-
-    // --- ИСПРАВЛЕНИЕ АУДИО ---
-    let audioUrl = ex.audio;
-    
-    // Преобразование Google Drive
-    if (audioUrl.includes('drive.google.com')) {
-        let fileId = "";
-        if (audioUrl.includes('id=')) {
-            fileId = audioUrl.split('id=')[1].split('&')[0];
-        } else {
-            fileId = audioUrl.split('/d/')[1].split('/')[0];
-        }
-        audioUrl = `https://docs.google.com/uc?export=open&id=${fileId}`;
-    }
-    
-    // Преобразование Dropbox
-    if (audioUrl.includes('dropbox.com')) {
-        audioUrl = audioUrl.replace('?dl=0', '').replace('?dl=1', '') + '?raw=1';
-    }
-
-    const player = document.getElementById('ex-audio');
-    player.src = audioUrl;
-    player.load(); // Перезагружаем плеер для применения новой ссылки
-    // ------------------------
-
-    document.getElementById('photo-box').classList.remove('alive');
-    document.getElementById('folder').classList.remove('open');
-    document.getElementById('seal').classList.remove('broken');
-
-    showPage('details');
-}
-
-    if (window.navigator.vibrate) window.navigator.vibrate(40);
-
-    document.getElementById('ex-title').innerText = ex.title;
-    document.getElementById('ex-author').innerText = ex.author;
-    document.getElementById('ex-desc').innerText = ex.desc;
-    document.getElementById('ex-secret').innerText = ex.secret;
-    document.getElementById('ex-img').src = ex.img;
-    document.getElementById('ex-audio').src = ex.audio;
-
-    document.getElementById('photo-box').classList.remove('alive');
-    document.getElementById('folder').classList.remove('open');
-    document.getElementById('seal').classList.remove('broken');
-
-    showPage('details');
-}
-
 function openSecret() {
-    const content = document.getElementById('details');
-    content.classList.add('shake');
-    setTimeout(() => content.classList.remove('shake'), 500);
+    document.getElementById('details').classList.add('shake');
+    setTimeout(() => document.getElementById('details').classList.remove('shake'), 500);
     if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100]);
     document.getElementById('folder').classList.add('open');
     document.getElementById('seal').classList.add('broken');
@@ -447,9 +430,7 @@ function openSecret() {
 }
 
 function closeDetails() {
-    const audio = document.getElementById('ex-audio');
-    audio.pause();
-    audio.currentTime = 0;
+    document.getElementById('ex-audio').pause();
     showPage('home');
 }
 
@@ -458,40 +439,23 @@ function startScanner() {
     html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
         { facingMode: "environment" }, 
-        { fps: 20, qrbox: 250 }, 
+        { fps: 15, qrbox: 250 }, 
         (decodedText) => {
-            new Audio('https://www.soundjay.com/mechanical/camera-shutter-click-01.mp3').play().catch(() => {});
-            document.body.style.filter = "brightness(2)";
-            setTimeout(() => document.body.style.filter = "brightness(1)", 150);
-            
-            stopScanner(); 
-
-            let rawData = decodedText.trim();
-            let finalId = rawData;
-
-            if (rawData.includes('id=')) {
-                finalId = rawData.split('id=').pop().split('&')[0];
-            }
-
-            openExhibit(finalId); 
+            stopScanner();
+            openExhibit(decodedText.trim()); 
         }
-    ).catch(err => console.error("Ошибка камеры:", err));
+    ).catch(err => console.error(err));
 }
 
 function stopScanner() {
     if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => html5QrCode.clear()).catch(err => console.log(err));
+        html5QrCode.stop().then(() => html5QrCode.clear());
     }
 }
 
 window.onload = () => {
     loadData();
-    const urlParams = new URLSearchParams(window.location.search);
-    const directId = urlParams.get('id');
-    if (directId) {
-        setTimeout(() => openExhibit(directId), 1500);
-    }
-    setInterval(loadData, 30000);
+    setInterval(loadData, 60000); // Обновлять раз в минуту
 };
 </script>
 
@@ -499,6 +463,7 @@ window.onload = () => {
 
 
 </html>
+
 
 
 
