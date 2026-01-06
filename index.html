@@ -4,74 +4,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Музей ПАМЯТЬ — Интерактив</title>
+    <title>Музей ПАМЯТЬ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Special+Elite&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        /* Эффект старой пленки */
-        body::after {
-            content: "";
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: url('https://upload.wikimedia.org/wikipedia/commons/7/76/1k_Noise_Texture.png');
-            opacity: 0.03;
-            pointer-events: none;
-            z-index: 999;
-        }
-
-        :root {
-            --red: #8b0000;
-            --paper: #d2c1a5;
-        }
-
-        html, body {
-            height: 100%;
+        :root { --red: #8b0000; --paper: #d2c1a5; }
+        
+        body {
             background: #0a0a0a;
             color: #e5e5e5;
-            margin: 0;
-            overflow: hidden;
             font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
         }
 
-        h1, h2 { font-family: 'Playfair Display', serif; }
-
+        /* Чтобы дизайн не "летел" на мобилках */
         .page {
             display: none;
+            position: absolute;
+            inset: 0;
             height: 100vh;
+            width: 100vw;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: 120px;
+            padding-bottom: 100px; /* место под меню */
+            background: #0a0a0a;
+            z-index: 10;
         }
 
         .page.active { display: block; }
 
-        .fade-in-up { animation: fadeInUp 0.6s ease forwards; opacity: 0; }
+        h1, h2 { font-family: 'Playfair Display', serif; }
 
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* Стили карточек */
+        .exhibit-card {
+            background: #151515;
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 1rem;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
         }
 
-        .shake { animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both; }
-
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-1px, 0, 0); }
-            20%, 80% { transform: translate3d(2px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-            40%, 60% { transform: translate3d(4px, 0, 0); }
-        }
-
-        .photo-box { position: relative; overflow: hidden; height: 35vh; background: #000; }
-
-        .photo-main {
-            filter: grayscale(1) sepia(0.2);
-            transition: 2s cubic-bezier(0.4, 0, 0.2, 1);
-            width: 100%; height: 100%; object-fit: cover;
-        }
-
-        .alive .photo-main { filter: grayscale(0) sepia(0); transform: scale(1.08); }
-
+        /* Стили секретной папки */
         .folder {
             background: var(--paper);
             color: #2d2419;
@@ -79,104 +60,90 @@
             max-height: 0;
             opacity: 0;
             overflow: hidden;
-            transition: all 0.8s ease;
-            border-radius: 4px;
-            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.2);
+            transition: all 0.5s ease-out;
+            margin-top: 20px;
+            padding: 0 20px;
         }
 
         .folder.open {
-            max-height: 2000px;
+            max-height: 1000px;
             opacity: 1;
-            padding: 25px;
-            margin-top: 40px;
-            border: 1px solid #bba689;
+            padding: 20px;
         }
 
         .seal {
-            width: 85px; height: 85px;
+            width: 80px; height: 80px;
             background: #900;
-            border: 4px double #500;
             border-radius: 50%;
-            color: white;
-            font-size: 9px;
-            font-weight: bold;
             display: flex; align-items: center; justify-content: center;
+            margin: -20px auto 0;
+            font-size: 8px; font-weight: bold; color: white;
             text-align: center; cursor: pointer;
-            transition: 0.5s; margin: -42px auto 0;
-            position: relative; z-index: 20;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 30; position: relative;
         }
 
-        .seal.broken { transform: scale(0.8) rotate(-25deg) translateY(10px); filter: grayscale(0.5); opacity: 0.8; }
+        /* Сканер */
+        #reader { width: 100%; max-width: 400px; margin: 0 auto; border-radius: 20px; overflow: hidden; }
 
-        #reader { position: relative; background: #111; height: 300px; }
-        #reader::after {
-            content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-            background: #ff0000; box-shadow: 0 0 15px #ff0000;
-            animation: scanning 2s infinite;
-        }
-        @keyframes scanning { 0%, 100% { top: 0; } 50% { top: 100%; } }
+        nav { z-index: 100; }
     </style>
 </head>
 
 <body>
 
-    <nav class="fixed bottom-0 w-full bg-black/95 border-t border-white/10 flex justify-around p-4 z-[100] backdrop-blur-lg">
-        <button onclick="showPage('home')" class="flex flex-col items-center gap-1">
-            <span class="text-xl">📂</span><span class="text-[9px] uppercase tracking-widest opacity-60">Архив</span>
+    <nav class="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-md border-t border-white/10 flex justify-around p-4">
+        <button onclick="showPage('home')" class="text-center">
+            <div class="text-xl">📂</div>
+            <div class="text-[9px] uppercase opacity-50">Архив</div>
         </button>
-        <button onclick="showPage('scanner')" class="bg-[#8b0000] p-4 -mt-12 rounded-full border-4 border-[#0a0a0a] shadow-2xl">
-            <span class="text-xl">📷</span>
+        <button onclick="showPage('scanner')" class="bg-[#8b0000] p-4 -mt-10 rounded-full border-4 border-[#0a0a0a]">
+            <div class="text-xl">📷</div>
         </button>
-        <button onclick="alert('Аудиогид скоро появится')" class="flex flex-col items-center gap-1">
-            <span class="text-xl">🎧</span><span class="text-[9px] uppercase tracking-widest opacity-60">Голос</span>
+        <button onclick="alert('Скоро')" class="text-center">
+            <div class="text-xl">🎧</div>
+            <div class="text-[9px] uppercase opacity-50">Голос</div>
         </button>
     </nav>
 
     <div id="home" class="page active p-6">
-        <div class="flex items-center gap-2 mb-4">
-            <div class="w-2 h-2 bg-red-600 rounded-full animate-ping"></div>
-            <span class="text-[9px] text-white/40 uppercase tracking-[2px] font-bold">Система активна</span>
+        <h1 class="text-4xl uppercase mb-8 mt-4">Музей <span class="text-[#8b0000]">Память</span></h1>
+        <input type="text" id="searchInput" oninput="filterExhibits()" placeholder="Поиск по названию..." 
+               class="w-full bg-white/5 border border-white/10 rounded-lg p-3 mb-6 outline-none focus:border-red-800 text-sm">
+        <div id="list">
+            <div class="text-center opacity-30 mt-10">Загрузка данных...</div>
         </div>
-        <div class="py-12 border-b border-white/10 mb-8 fade-in-up">
-            <h1 class="text-4xl uppercase leading-none">Музей<br><span class="text-[#8b0000]">Память</span></h1>
-        </div>
-        <div class="mb-6 fade-in-up">
-            <input type="text" id="searchInput" oninput="filterExhibits()" placeholder="Поиск по архиву..." class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm focus:outline-none focus:border-[#8b0000]">
-        </div>
-        <div id="list" class="space-y-4"></div>
     </div>
 
-    <div id="scanner" class="page p-6">
-        <h2 class="text-2xl text-center mb-8 font-bold uppercase tracking-widest">Сканирование шифра</h2>
-        <div id="reader" class="rounded-3xl overflow-hidden border border-white/10 shadow-2xl"></div>
-        <button onclick="showPage('home')" class="w-full mt-8 p-4 text-xs uppercase tracking-widest opacity-50">Отмена</button>
+    <div id="scanner" class="page p-6 text-center">
+        <h2 class="text-xl uppercase mb-6 mt-10">Сканирование</h2>
+        <div id="reader"></div>
+        <button onclick="showPage('home')" class="mt-8 opacity-50 text-xs uppercase">Закрыть</button>
     </div>
 
     <div id="details" class="page">
-        <div id="photo-box" class="photo-box" onclick="this.classList.toggle('alive')">
-            <img id="ex-img" class="photo-main" src="">
-            <div class="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-black/40"></div>
-            <button onclick="closeDetails()" class="absolute top-6 left-6 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white">✕</button>
-            <div class="absolute bottom-6 left-6 right-6">
-                <h2 id="ex-title" class="text-3xl font-bold leading-tight"></h2>
-                <p id="ex-author" class="text-[#8b0000] font-bold text-xs uppercase mt-1 tracking-widest"></p>
+        <div class="relative h-[40vh] bg-black">
+            <img id="ex-img" class="w-full h-full object-cover opacity-60" src="">
+            <button onclick="closeDetails()" class="absolute top-4 left-4 w-10 h-10 bg-black/50 rounded-full">✕</button>
+            <div class="absolute bottom-4 left-6">
+                <h2 id="ex-title" class="text-2xl font-bold uppercase"></h2>
+                <p id="ex-author" class="text-[#8b0000] text-xs font-bold uppercase"></p>
             </div>
         </div>
+
         <div class="p-6">
-            <div class="bg-white/5 p-4 rounded-2xl border border-white/10 mb-8 flex items-center gap-4">
-                <div class="w-10 h-10 bg-[#8b0000] rounded-full flex items-center justify-center animate-pulse">🎧</div>
-                <audio id="ex-audio" controls preload="metadata" playsinline class="w-full h-8 accent-[#8b0000]"></audio>
+            <div class="bg-white/5 p-4 rounded-xl flex items-center gap-4 mb-6">
+                <div class="text-2xl">🎧</div>
+                <audio id="ex-audio" controls class="w-full h-10"></audio>
             </div>
-            <p id="ex-desc" class="text-gray-300 font-light leading-relaxed mb-12 text-lg"></p>
-            <div id="seal" class="seal" onclick="openSecret()">
-                <span class="p-2">ГРИФ СЕКРЕТНО РАССЕКРЕТИТЬ</span>
-            </div>
+            
+            <p id="ex-desc" class="text-gray-400 text-sm leading-relaxed mb-10"></p>
+
+            <div id="seal" class="seal" onclick="openSecret()">РАССЕКРЕТИТЬ</div>
+            
             <div id="folder" class="folder">
-                <div class="border-2 border-black/10 p-4 rounded-sm">
-                    <p class="text-[10px] uppercase font-black mb-4 border-b border-black/20 pb-2">Архивная выписка</p>
-                    <p id="ex-secret" class="italic leading-loose text-sm"></p>
-                </div>
+                <div class="border-t border-black/20 pt-2 text-[10px] mb-2 uppercase font-bold text-black/40">Документ №24-Б</div>
+                <p id="ex-secret" class="italic text-sm"></p>
             </div>
         </div>
     </div>
@@ -187,56 +154,48 @@
 
         async function loadData() {
             try {
-                const response = await fetch(`${spreadsheetUrl}&cb=${Date.now()}`);
-                const csvText = await response.text();
-                const allRows = csvText.split(/\r?\n/).slice(1);
-
-                exhibits = allRows.map(row => {
+                const res = await fetch(`${spreadsheetUrl}&t=${Date.now()}`);
+                const text = await res.text();
+                const rows = text.split('\n').slice(1);
+                
+                exhibits = rows.map(row => {
                     const cols = row.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^$)/g) || [];
-                    const clean = (val) => val ? val.replace(/^"|"$/g, '').trim() : '';
+                    const clean = (s) => s ? s.replace(/^"|"$/g, '').trim() : '';
                     return {
                         id: clean(cols[0]), title: clean(cols[1]), author: clean(cols[2]),
                         img: clean(cols[3]), audio: clean(cols[4]), desc: clean(cols[5]), secret: clean(cols[6])
                     };
-                }).filter(ex => ex.id && ex.title);
+                }).filter(x => x.id);
                 renderHome();
-            } catch (e) { console.error('Ошибка загрузки:', e); }
+            } catch (e) { console.error("Ошибка сети", e); }
         }
 
-        function renderHome(dataToRender) {
-            const listEl = document.getElementById('list');
-            const data = dataToRender || exhibits;
-            listEl.innerHTML = data.map(ex => `
-                <div onclick="openExhibit('${ex.id}')" class="fade-in-up bg-[#151515] p-5 rounded-2xl flex items-center gap-4 border border-white/5 active:scale-95 transition-all">
-                    <div class="w-16 h-16 flex-shrink-0">
-                        <img src="${ex.img}" class="w-full h-full object-cover grayscale rounded-xl shadow-lg">
+        function renderHome(data = exhibits) {
+            document.getElementById('list').innerHTML = data.map(ex => `
+                <div onclick="openExhibit('${ex.id}')" class="exhibit-card active:scale-95 transition-transform">
+                    <img src="${ex.img}" class="w-14 h-14 rounded-lg object-cover grayscale">
+                    <div>
+                        <div class="font-bold text-sm uppercase">${ex.title}</div>
+                        <div class="text-[10px] text-[#8b0000] uppercase">${ex.author}</div>
                     </div>
-                    <div class="flex-1">
-                        <h3 class="font-bold text-white uppercase text-sm">${ex.title}</h3>
-                        <p class="text-[10px] text-[#8b0000] mt-1 font-bold uppercase opacity-80">${ex.author}</p>
-                    </div>
-                    <span class="text-white/20">→</span>
                 </div>
             `).join('');
         }
 
         function filterExhibits() {
             const q = document.getElementById('searchInput').value.toLowerCase();
-            renderHome(exhibits.filter(ex => ex.title.toLowerCase().includes(q) || ex.author.toLowerCase().includes(q)));
+            renderHome(exhibits.filter(ex => ex.title.toLowerCase().includes(q)));
         }
 
         function showPage(id) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            const target = document.getElementById(id);
-            if(target) target.classList.add('active');
+            document.getElementById(id).classList.add('active');
             if (id === 'scanner') startScanner(); else stopScanner();
         }
 
         function openExhibit(id) {
-            const ex = exhibits.find(e => String(e.id).trim().toLowerCase() === String(id).trim().toLowerCase());
+            const ex = exhibits.find(e => e.id.toLowerCase() === id.toLowerCase());
             if (!ex) return;
-
-            if (window.navigator.vibrate) window.navigator.vibrate(40);
 
             document.getElementById('ex-title').innerText = ex.title;
             document.getElementById('ex-author').innerText = ex.author;
@@ -244,30 +203,24 @@
             document.getElementById('ex-secret').innerText = ex.secret;
             document.getElementById('ex-img').src = ex.img;
 
-            // Обработка аудио ссылок (Google Drive)
-            let audioUrl = ex.audio;
-            if (audioUrl.includes('drive.google.com')) {
-                let fileId = audioUrl.includes('id=') ? audioUrl.split('id=')[1].split('&')[0] : audioUrl.split('/d/')[1].split('/')[0];
-                audioUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
+            // ФИКС ЗВУКА ДЛЯ ТЕЛЕФОНОВ
+            let aUrl = ex.audio;
+            if (aUrl.includes('drive.google.com')) {
+                const fId = aUrl.match(/[-\w]{25,}/);
+                if (fId) aUrl = `https://docs.google.com/uc?export=download&id=${fId[0]}`;
             }
-
+            
             const player = document.getElementById('ex-audio');
-            player.src = audioUrl;
-            player.load();
+            player.src = aUrl;
+            player.load(); // Важно для Safari
 
-            document.getElementById('photo-box').classList.remove('alive');
             document.getElementById('folder').classList.remove('open');
-            document.getElementById('seal').classList.remove('broken');
             showPage('details');
         }
 
         function openSecret() {
-            const el = document.getElementById('details');
-            el.classList.add('shake');
-            setTimeout(() => el.classList.remove('shake'), 500);
-            document.getElementById('folder').classList.add('open');
-            document.getElementById('seal').classList.add('broken');
-            new Audio('https://www.soundjay.com/human/paper-rip-1.mp3').play().catch(() => {});
+            document.getElementById('folder').classList.toggle('open');
+            new Audio('https://www.soundjay.com/human/paper-rip-1.mp3').play().catch(()=>{});
         }
 
         function closeDetails() {
@@ -275,20 +228,18 @@
             showPage('home');
         }
 
-        let html5QrCode;
+        let scanner;
         function startScanner() {
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, (text) => {
+            scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => {
+                let id = text.split('id=').pop().split('&')[0];
                 stopScanner();
-                let id = text.includes('id=') ? text.split('id=').pop().split('&')[0] : text.trim();
                 openExhibit(id);
             }).catch(err => console.error(err));
         }
 
         function stopScanner() {
-            if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().then(() => html5QrCode.clear()).catch(e => console.log(e));
-            }
+            if (scanner) scanner.stop().catch(()=>{});
         }
 
         window.onload = loadData;
