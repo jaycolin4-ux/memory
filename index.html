@@ -371,15 +371,57 @@ function showPage(id) {
 }
 
 function openExhibit(id) {
-    const targetId = String(id).trim().toLowerCase();
-    const ex = exhibits.find(e => String(e.id).trim().toLowerCase() === targetId);
-    
-    if (!ex) {
-        console.error("ID не найден:", targetId);
-        alert("Объект " + targetId + " не найден в архиве.");
-        showPage('home');
-        return;
-    }
+    const targetId = String(id).trim().toLowerCase();
+    const ex = exhibits.find(e => String(e.id).trim().toLowerCase() === targetId);
+    
+    if (!ex) {
+        console.error("ID не найден:", targetId);
+        alert("Объект " + targetId + " не найден в архиве.");
+        showPage('home');
+        return;
+    }
+
+    if (window.navigator.vibrate) window.navigator.vibrate(40);
+
+    document.getElementById('ex-title').innerText = ex.title;
+    document.getElementById('ex-author').innerText = ex.author;
+    document.getElementById('ex-desc').innerText = ex.desc;
+    document.getElementById('ex-secret').innerText = ex.secret;
+    document.getElementById('ex-img').src = ex.img;
+
+    // --- ИСПРАВЛЕНИЕ АУДИО ---
+    let audioUrl = ex.audio;
+    
+    // Преобразование Google Drive в прямой поток
+    if (audioUrl.includes('drive.google.com')) {
+        let fileId = "";
+        if (audioUrl.includes('id=')) {
+            fileId = audioUrl.split('id=')[1].split('&')[0];
+        } else if (audioUrl.includes('/d/')) {
+            fileId = audioUrl.split('/d/')[1].split('/')[0];
+        }
+        // Заменяем на download - это критически важно для тега <audio>
+        audioUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
+    }
+    
+    // Преобразование Dropbox
+    if (audioUrl.includes('dropbox.com')) {
+        audioUrl = audioUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '').replace('?dl=1', '') + '?raw=1';
+    }
+
+    const player = document.getElementById('ex-audio');
+    player.src = audioUrl;
+    player.load(); 
+    // На некоторых мобильных браузерах автоплей запрещен, 
+    // поэтому пользователь должен сам нажать Play, но load() подготовит файл.
+    // ------------------------
+
+    document.getElementById('photo-box').classList.remove('alive');
+    document.getElementById('folder').classList.remove('open');
+    document.getElementById('seal').classList.remove('broken');
+
+    showPage('details');
+}
 
     if (window.navigator.vibrate) window.navigator.vibrate(40);
 
@@ -499,6 +541,7 @@ window.onload = () => {
 
 
 </html>
+
 
 
 
