@@ -296,69 +296,56 @@
             </div>
         </div>
     </div>
-<script>let exhibits = [];
+<script>
+ let exhibits = [];
 const spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSh-Mi4ZmM4ZZZwXsjAkVDUNeRQJPhe_kzWWR0p4GzScVUnkzR4Ci4t_GsSSz22Z0T886mnbJENA21Q/pub?gid=0&single=true&output=csv';
 
-// Функция парсинга CSV строки
+// Утилита для корректного чтения CSV
 function parseCSV(text) {
-    const p = /^\s*("([^"]*(?:""[^"]*)*)"|([^,]*))/;
-    const result = [];
-    let line = text;
-    while (line.length > 0) {
-        const m = line.match(p);
-        if (m) {
-            result.push(m[2] ? m[2].replace(/""/g, '"') : m[3].trim());
-            line = line.substring(m[0].length);
-            if (line.startsWith(',')) line = line.substring(1);
-        } else break;
-    }
-    return result;
+    const lines = text.split(/\r?\n/);
+    return lines.slice(1).map(line => {
+        const matches = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g);
+        if (!matches) return null;
+        return matches.map(val => val.replace(/^"|"$/g, '').trim());
+    }).filter(x => x !== null);
 }
 
 async function loadData() {
     try {
         const response = await fetch(`${spreadsheetUrl}&cb=${Date.now()}`);
         const csvText = await response.text();
-        const lines = csvText.split(/\r?\n/);
-        
-        exhibits = lines.slice(1).map(line => {
-            const cols = parseCSV(line);
-            return {
-                id: cols[0],
-                title: cols[1],
-                author: cols[2],
-                img: cols[3],
-                audio: cols[4],
-                desc: cols[5],
-                secret: cols[6]
-            };
-        }).filter(ex => ex.id && ex.title);
+        const data = parseCSV(csvText);
 
-        console.log("Загружено:", exhibits);
-        
-        // Рендерим только если мы на главной странице
-        if (document.getElementById('home').classList.contains('active')) {
-            renderHome();
-        }
+        exhibits = data.map(cols => ({
+            id: cols[0],
+            title: cols[1],
+            author: cols[2],
+            img: cols[3],
+            audio: cols[4],
+            desc: cols[5],
+            secret: cols[6]
+        })).filter(ex => ex.id && ex.title);
+
+        console.log("Данные успешно загружены:", exhibits);
+        renderHome();
     } catch (e) {
-        console.error('Ошибка загрузки данных:', e);
+        console.error('Ошибка при загрузке данных:', e);
     }
 }
 
 function renderHome(dataToRender) {
     const listEl = document.getElementById('list');
-    const data = dataToRender || exhibits;
+    const items = dataToRender || exhibits;
     
-    if (data.length === 0) {
-        listEl.innerHTML = '<div class="text-center opacity-30 py-10 italic">Загрузка архива...</div>';
+    if (items.length === 0) {
+        listEl.innerHTML = '<div class="text-center opacity-30 py-10 italic">Архив пуст...</div>';
         return;
     }
 
-    listEl.innerHTML = data.map(ex => `
+    listEl.innerHTML = items.map(ex => `
         <div onclick="openExhibit('${ex.id}')" class="fade-in-up bg-[#151515] p-5 rounded-2xl flex items-center gap-4 border border-white/5 active:scale-[0.98] transition-all">
             <div class="w-16 h-16 flex-shrink-0">
-                <img src="${ex.img}" class="w-full h-full object-cover grayscale rounded-xl shadow-lg" 
-                     onerror="this.src='https://via.placeholder.com/100?text=Нет+фото'">
+                <img src="${ex.img}" class="w-full h-full object-cover grayscale rounded-xl shadow-lg" onerror="this.src='https://via.placeholder.com/100'">
             </div>
             <div class="flex-1 text-left">
                 <h3 class="font-bold text-base uppercase tracking-tight text-white leading-tight">${ex.title}</h3>
@@ -371,98 +358,60 @@ function renderHome(dataToRender) {
 
 function openExhibit(id) {
     const ex = exhibits.find(e => String(e.id).trim() === String(id).trim());
-    
-    if (!ex) {
-        console.error("ID не найден:", id);
-        return;
-    }
+    if (!ex) return;
 
-    if (window.navigator.vibrate) window.navigator.vibrate(40);
-
-    // Заполнение данных
     document.getElementById('ex-title').innerText = ex.title;
     document.getElementById('ex-author').innerText = ex.author;
     document.getElementById('ex-desc').innerText = ex.desc;
     document.getElementById('ex-secret').innerText = ex.secret;
     document.getElementById('ex-img').src = ex.img;
 
-    // Обработка аудио ссылки
     let audioUrl = ex.audio;
     if (audioUrl.includes('drive.google.com')) {
         const fileId = audioUrl.includes('id=') ? audioUrl.split('id=')[1].split('&')[0] : audioUrl.split('/d/')[1].split('/')[0];
         audioUrl = `https://docs.google.com/uc?export=open&id=${fileId}`;
     }
-
+    
     const player = document.getElementById('ex-audio');
     player.src = audioUrl;
     player.load();
 
-    // Сброс состояния секретной папки
     document.getElementById('photo-box').classList.remove('alive');
     document.getElementById('folder').classList.remove('open');
     document.getElementById('seal').classList.remove('broken');
-
     showPage('details');
 }
 
-// Остальные функции (filterExhibits, showPage, openSecret, и т.д.) остаются без изменений
-function filterExhibits() {
-    const q = document.getElementById('searchInput').value.toLowerCase();
-    const filtered = exhibits.filter(ex =>
-        ex.title.toLowerCase().includes(q) || ex.author.toLowerCase().includes(q)
-    );
-    renderHome(filtered);
-}
-
-function showPage(id) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    if (id === 'scanner') startScanner(); else stopScanner();
-}
-
 function openSecret() {
-    document.getElementById('details').classList.add('shake');
-    setTimeout(() => document.getElementById('details').classList.remove('shake'), 500);
-    if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100]);
+    const details = document.getElementById('details');
+    details.classList.add('shake');
+    setTimeout(() => details.classList.remove('shake'), 500);
     document.getElementById('folder').classList.add('open');
     document.getElementById('seal').classList.add('broken');
     new Audio('https://www.soundjay.com/human/paper-rip-1.mp3').play().catch(() => {});
 }
 
-function closeDetails() {
-    document.getElementById('ex-audio').pause();
-    showPage('home');
+function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
 }
 
-let html5QrCode;
-function startScanner() {
-    html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start(
-        { facingMode: "environment" }, 
-        { fps: 15, qrbox: 250 }, 
-        (decodedText) => {
-            stopScanner();
-            openExhibit(decodedText.trim()); 
-        }
-    ).catch(err => console.error(err));
+function filterExhibits() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = exhibits.filter(ex => 
+        ex.title.toLowerCase().includes(q) || ex.author.toLowerCase().includes(q)
+    );
+    renderHome(filtered);
 }
 
-function stopScanner() {
-    if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => html5QrCode.clear());
-    }
-}
-
-window.onload = () => {
-    loadData();
-    setInterval(loadData, 60000); // Обновлять раз в минуту
-};
+window.onload = loadData;
 </script>
 
 </body>
 
 
 </html>
+
 
 
 
