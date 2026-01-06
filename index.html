@@ -16,31 +16,39 @@
             color: #e5e5e5;
             font-family: 'Roboto', sans-serif;
             margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
             overflow: hidden;
+            height: 100vh;
         }
 
-        /* Чтобы дизайн не "летел" на мобилках */
         .page {
             display: none;
             position: absolute;
             inset: 0;
             height: 100vh;
-            width: 100vw;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: 100px; /* место под меню */
+            padding-bottom: 160px; /* Огромный отступ, чтобы кнопка не мешала */
             background: #0a0a0a;
-            z-index: 10;
         }
 
         .page.active { display: block; }
 
-        h1, h2 { font-family: 'Playfair Display', serif; }
+        /* КВАДРАТНЫЙ СКАНЕР */
+        #reader { 
+            width: 280px !important; 
+            height: 280px !important; 
+            margin: 0 auto; 
+            border-radius: 20px; 
+            overflow: hidden;
+            border: 2px solid var(--red);
+        }
+        
+        #reader video {
+            object-fit: cover !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
 
-        /* Стили карточек */
         .exhibit-card {
             background: #151515;
             border: 1px solid rgba(255,255,255,0.05);
@@ -52,7 +60,6 @@
             margin-bottom: 1rem;
         }
 
-        /* Стили секретной папки */
         .folder {
             background: var(--paper);
             color: #2d2419;
@@ -62,89 +69,88 @@
             overflow: hidden;
             transition: all 0.5s ease-out;
             margin-top: 20px;
-            padding: 0 20px;
+            border-radius: 4px;
         }
 
         .folder.open {
-            max-height: 1000px;
+            max-height: 1500px;
             opacity: 1;
             padding: 20px;
+            margin-bottom: 40px;
         }
 
         .seal {
-            width: 80px; height: 80px;
+            width: 90px; height: 90px;
             background: #900;
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            margin: -20px auto 0;
-            font-size: 8px; font-weight: bold; color: white;
+            margin: 20px auto 0;
+            font-size: 9px; font-weight: bold; color: white;
             text-align: center; cursor: pointer;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            z-index: 30; position: relative;
+            border: 3px double rgba(0,0,0,0.3);
         }
 
-        /* Сканер */
-        #reader { width: 100%; max-width: 400px; margin: 0 auto; border-radius: 20px; overflow: hidden; }
-
-        nav { z-index: 100; }
+        nav { z-index: 999; }
     </style>
 </head>
 
 <body>
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-md border-t border-white/10 flex justify-around p-4">
-        <button onclick="showPage('home')" class="text-center">
-            <div class="text-xl">📂</div>
-            <div class="text-[9px] uppercase opacity-50">Архив</div>
+    <nav class="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-lg border-t border-white/10 flex justify-around p-5">
+        <button onclick="showPage('home')" class="text-center active:scale-90 transition">
+            <div class="text-2xl">📂</div>
+            <div class="text-[8px] uppercase tracking-widest opacity-50 mt-1">Архив</div>
         </button>
-        <button onclick="showPage('scanner')" class="bg-[#8b0000] p-4 -mt-10 rounded-full border-4 border-[#0a0a0a]">
-            <div class="text-xl">📷</div>
+        <button onclick="showPage('scanner')" class="bg-[#8b0000] p-5 -mt-12 rounded-full border-4 border-[#0a0a0a] shadow-2xl active:scale-90 transition">
+            <div class="text-2xl">📷</div>
         </button>
-        <button onclick="alert('Скоро')" class="text-center">
-            <div class="text-xl">🎧</div>
-            <div class="text-[9px] uppercase opacity-50">Голос</div>
+        <button onclick="alert('Скоро')" class="text-center active:scale-90 transition">
+            <div class="text-2xl">🎧</div>
+            <div class="text-[8px] uppercase tracking-widest opacity-50 mt-1">Голос</div>
         </button>
     </nav>
 
     <div id="home" class="page active p-6">
-        <h1 class="text-4xl uppercase mb-8 mt-4">Музей <span class="text-[#8b0000]">Память</span></h1>
-        <input type="text" id="searchInput" oninput="filterExhibits()" placeholder="Поиск по названию..." 
-               class="w-full bg-white/5 border border-white/10 rounded-lg p-3 mb-6 outline-none focus:border-red-800 text-sm">
-        <div id="list">
-            <div class="text-center opacity-30 mt-10">Загрузка данных...</div>
-        </div>
+        <h1 class="text-4xl font-bold uppercase mb-8 mt-4 tracking-tighter">Музей <span class="text-[#8b0000]">Память</span></h1>
+        <input type="text" id="searchInput" oninput="filterExhibits()" placeholder="Поиск шифра..." 
+               class="w-full bg-white/5 border border-white/10 rounded-xl p-4 mb-6 outline-none focus:border-red-800 text-sm">
+        <div id="list"></div>
     </div>
 
     <div id="scanner" class="page p-6 text-center">
-        <h2 class="text-xl uppercase mb-6 mt-10">Сканирование</h2>
-        <div id="reader"></div>
-        <button onclick="showPage('home')" class="mt-8 opacity-50 text-xs uppercase">Закрыть</button>
+        <h2 class="text-xl font-bold uppercase mb-10 mt-10 tracking-widest">Наведите на квадрат</h2>
+        <div class="flex justify-center">
+            <div id="reader"></div>
+        </div>
+        <button onclick="showPage('home')" class="mt-10 opacity-40 text-[10px] uppercase tracking-widest">Отмена</button>
     </div>
 
     <div id="details" class="page">
-        <div class="relative h-[40vh] bg-black">
-            <img id="ex-img" class="w-full h-full object-cover opacity-60" src="">
-            <button onclick="closeDetails()" class="absolute top-4 left-4 w-10 h-10 bg-black/50 rounded-full">✕</button>
-            <div class="absolute bottom-4 left-6">
-                <h2 id="ex-title" class="text-2xl font-bold uppercase"></h2>
-                <p id="ex-author" class="text-[#8b0000] text-xs font-bold uppercase"></p>
+        <div class="relative h-[35vh] bg-black">
+            <img id="ex-img" class="w-full h-full object-cover grayscale opacity-70" src="">
+            <button onclick="closeDetails()" class="absolute top-5 left-5 w-10 h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white">✕</button>
+            <div class="absolute bottom-5 left-6 right-6">
+                <h2 id="ex-title" class="text-3xl font-bold uppercase leading-tight"></h2>
+                <p id="ex-author" class="text-[#8b0000] text-sm font-bold uppercase tracking-widest mt-1"></p>
             </div>
         </div>
 
         <div class="p-6">
-            <div class="bg-white/5 p-4 rounded-xl flex items-center gap-4 mb-6">
-                <div class="text-2xl">🎧</div>
-                <audio id="ex-audio" controls class="w-full h-10"></audio>
+            <div class="bg-white/5 p-4 rounded-2xl flex items-center gap-4 mb-8 border border-white/5">
+                <div class="text-2xl animate-pulse">🎧</div>
+                <audio id="ex-audio" controls class="w-full h-8"></audio>
             </div>
             
-            <p id="ex-desc" class="text-gray-400 text-sm leading-relaxed mb-10"></p>
+            <p id="ex-desc" class="text-gray-400 text-lg leading-relaxed font-light mb-12"></p>
 
-            <div id="seal" class="seal" onclick="openSecret()">РАССЕКРЕТИТЬ</div>
+            <div id="seal" class="seal" onclick="openSecret()">ГРИФ<br>СЕКРЕТНО</div>
             
             <div id="folder" class="folder">
-                <div class="border-t border-black/20 pt-2 text-[10px] mb-2 uppercase font-bold text-black/40">Документ №24-Б</div>
-                <p id="ex-secret" class="italic text-sm"></p>
+                <div class="border-b border-black/10 pb-2 mb-4 text-[9px] uppercase font-bold text-black/60">Архивное дело №024-Б</div>
+                <p id="ex-secret" class="italic text-base leading-relaxed"></p>
             </div>
+            <div class="h-20"></div>
         </div>
     </div>
 
@@ -154,7 +160,7 @@
 
         async function loadData() {
             try {
-                const res = await fetch(`${spreadsheetUrl}&t=${Date.now()}`);
+                const res = await fetch(`${spreadsheetUrl}&cache=${Date.now()}`);
                 const text = await res.text();
                 const rows = text.split('\n').slice(1);
                 
@@ -167,24 +173,25 @@
                     };
                 }).filter(x => x.id);
                 renderHome();
-            } catch (e) { console.error("Ошибка сети", e); }
+            } catch (e) { console.error(e); }
         }
 
         function renderHome(data = exhibits) {
             document.getElementById('list').innerHTML = data.map(ex => `
-                <div onclick="openExhibit('${ex.id}')" class="exhibit-card active:scale-95 transition-transform">
-                    <img src="${ex.img}" class="w-14 h-14 rounded-lg object-cover grayscale">
-                    <div>
-                        <div class="font-bold text-sm uppercase">${ex.title}</div>
-                        <div class="text-[10px] text-[#8b0000] uppercase">${ex.author}</div>
+                <div onclick="openExhibit('${ex.id}')" class="exhibit-card active:scale-95 transition-all">
+                    <img src="${ex.img}" class="w-16 h-16 rounded-xl object-cover grayscale shadow-lg">
+                    <div class="flex-1">
+                        <div class="font-bold text-sm uppercase leading-tight">${ex.title}</div>
+                        <div class="text-[9px] text-[#8b0000] uppercase mt-1 tracking-wider font-bold">${ex.author}</div>
                     </div>
+                    <div class="text-white/10 text-xl">→</div>
                 </div>
             `).join('');
         }
 
         function filterExhibits() {
             const q = document.getElementById('searchInput').value.toLowerCase();
-            renderHome(exhibits.filter(ex => ex.title.toLowerCase().includes(q)));
+            renderHome(exhibits.filter(ex => ex.title.toLowerCase().includes(q) || ex.author.toLowerCase().includes(q)));
         }
 
         function showPage(id) {
@@ -194,7 +201,7 @@
         }
 
         function openExhibit(id) {
-            const ex = exhibits.find(e => e.id.toLowerCase() === id.toLowerCase());
+            const ex = exhibits.find(e => String(e.id).toLowerCase().trim() === String(id).toLowerCase().trim());
             if (!ex) return;
 
             document.getElementById('ex-title').innerText = ex.title;
@@ -203,7 +210,6 @@
             document.getElementById('ex-secret').innerText = ex.secret;
             document.getElementById('ex-img').src = ex.img;
 
-            // ФИКС ЗВУКА ДЛЯ ТЕЛЕФОНОВ
             let aUrl = ex.audio;
             if (aUrl.includes('drive.google.com')) {
                 const fId = aUrl.match(/[-\w]{25,}/);
@@ -212,7 +218,7 @@
             
             const player = document.getElementById('ex-audio');
             player.src = aUrl;
-            player.load(); // Важно для Safari
+            player.load();
 
             document.getElementById('folder').classList.remove('open');
             showPage('details');
@@ -220,6 +226,10 @@
 
         function openSecret() {
             document.getElementById('folder').classList.toggle('open');
+            // Прокрутка вниз при открытии
+            setTimeout(() => {
+                document.getElementById('details').scrollBy({ top: 300, behavior: 'smooth' });
+            }, 300);
             new Audio('https://www.soundjay.com/human/paper-rip-1.mp3').play().catch(()=>{});
         }
 
@@ -231,15 +241,17 @@
         let scanner;
         function startScanner() {
             scanner = new Html5Qrcode("reader");
-            scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => {
-                let id = text.split('id=').pop().split('&')[0];
+            scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: {width: 250, height: 250} }, (text) => {
+                let id = text.includes('id=') ? text.split('id=').pop().split('&')[0] : text.trim();
                 stopScanner();
                 openExhibit(id);
             }).catch(err => console.error(err));
         }
 
         function stopScanner() {
-            if (scanner) scanner.stop().catch(()=>{});
+            if (scanner && scanner.isScanning) {
+                scanner.stop().then(() => scanner.clear());
+            }
         }
 
         window.onload = loadData;
