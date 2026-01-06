@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,7 +8,7 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Special+Elite&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        /* Шум и виньетка не должны блокировать клики */
+        /* Эффект старой пленки */
         body::after {
             content: "";
             position: fixed;
@@ -31,19 +30,27 @@
         :root { --red: #8b0000; --paper: #d2c1a5; }
 
         html, body {
-            height: 100%; background: #0a0a0a; color: #e5e5e5;
-            margin: 0; overflow: hidden; font-family: 'Roboto', sans-serif;
+            height: 100%;
+            background: #0a0a0a;
+            color: #e5e5e5;
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Roboto', sans-serif;
         }
 
         h1, h2 { font-family: 'Playfair Display', serif; }
 
         .page {
-            display: none; height: 100vh; overflow-y: auto;
-            -webkit-overflow-scrolling: touch; padding-bottom: 120px;
+            display: none;
+            height: 100vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 120px;
         }
 
         .page.active { display: block; }
 
+        /* Анимации */
         .fade-in-up { animation: fadeInUp 0.6s ease forwards; opacity: 0; }
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(20px); }
@@ -62,6 +69,14 @@
         .photo-main { filter: grayscale(1) sepia(0.2); transition: 2s; width: 100%; height: 100%; object-fit: cover; }
         .alive .photo-main { filter: grayscale(0) sepia(0); transform: scale(1.08); }
 
+        /* Фикс кнопки закрытия */
+        .close-btn {
+            position: absolute; top: 24px; left: 24px; width: 40px; height: 40px;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            color: white; z-index: 100; cursor: pointer; border: 1px solid rgba(255,255,255,0.2);
+        }
+
         .folder {
             background: var(--paper); color: #2d2419; font-family: 'Special Elite', serif;
             max-height: 0; opacity: 0; overflow: hidden; transition: all 0.8s ease;
@@ -75,12 +90,17 @@
             border-radius: 50%; color: white; font-size: 9px; font-weight: bold;
             display: flex; align-items: center; justify-content: center; text-align: center;
             cursor: pointer; transition: 0.5s; margin: -42px auto 0; position: relative;
-            z-index: 60; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+            z-index: 20; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
         }
 
         .seal.broken { transform: scale(0.8) rotate(-25deg) translateY(10px); filter: grayscale(0.5); opacity: 0.8; }
 
-        #reader { position: relative; background: #111; min-height: 300px; }
+        #reader { position: relative; background: #111; }
+        #reader::after {
+            content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: #ff0000; box-shadow: 0 0 15px #ff0000; animation: scanning 2s infinite;
+        }
+        @keyframes scanning { 0%, 100% { top: 0; } 50% { top: 100%; } }
     </style>
 </head>
 
@@ -102,42 +122,51 @@
     <div id="home" class="page active p-6">
         <div class="flex items-center gap-2 mb-4 px-1">
             <div class="w-2 h-2 bg-red-600 rounded-full animate-ping"></div>
-            <span class="text-[9px] text-white/40 uppercase tracking-[2px] font-bold">Архив: Подключено</span>
+            <span class="text-[9px] text-white/40 uppercase tracking-[2px] font-bold">Архив: Соединение установлено</span>
         </div>
         <div class="py-12 border-b border-white/10 mb-8 fade-in-up">
-            <h1 class="text-4xl tracking-tighter uppercase">Музей<br><span class="text-[#8b0000]">Память</span></h1>
+            <h1 class="text-4xl tracking-tighter uppercase leading-none">Музей<br><span class="text-[#8b0000]">Память</span></h1>
+            <p class="text-[10px] text-gray-500 tracking-[3px] mt-4 italic font-light">История в реальном времени</p>
         </div>
-        <input type="text" id="searchInput" oninput="filterExhibits()" placeholder="Поиск по архиву..."
-            class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-[#8b0000] mb-6">
+        <div class="mb-6 fade-in-up" style="animation-delay: 0.1s">
+            <input type="text" id="searchInput" oninput="filterExhibits()" placeholder="Поиск по названию или автору..."
+                class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm focus:outline-none focus:border-[#8b0000] transition-all">
+        </div>
         <div id="list" class="space-y-4"></div>
     </div>
 
     <div id="scanner" class="page p-6">
         <h2 class="text-2xl text-center mb-8 font-bold uppercase tracking-widest">Наведите на шифр</h2>
-        <div id="reader" class="rounded-3xl overflow-hidden border border-white/10"></div>
-        <button onclick="showPage('home')" class="w-full mt-8 p-4 text-xs uppercase opacity-50">Вернуться</button>
+        <div id="reader" class="rounded-3xl overflow-hidden border border-white/10 shadow-2xl"></div>
+        <button onclick="showPage('home')" class="w-full mt-8 p-4 text-xs uppercase tracking-widest opacity-50">Отмена</button>
     </div>
 
     <div id="details" class="page">
         <div id="photo-box" class="photo-box" onclick="this.classList.toggle('alive')">
+            <div class="close-btn" onclick="closeDetails(event)">✕</div>
             <img id="ex-img" class="photo-main" src="">
             <div class="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-black/40"></div>
-            <button onclick="closeDetails()" class="absolute top-6 left-6 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white z-[110]">✕</button>
-            <div class="absolute bottom-6 left-6 right-6">
-                <h2 id="ex-title" class="text-3xl font-bold"></h2>
-                <p id="ex-author" class="text-[#8b0000] font-bold text-xs uppercase mt-1"></p>
+            <div class="absolute bottom-6 left-6 right-6 pointer-events-none">
+                <h2 id="ex-title" class="text-3xl font-bold leading-tight"></h2>
+                <p id="ex-author" class="text-[#8b0000] font-bold text-xs uppercase mt-1 tracking-widest"></p>
             </div>
         </div>
 
         <div class="p-6">
             <div class="bg-white/5 p-4 rounded-2xl border border-white/10 mb-8 flex items-center gap-4">
-                <audio id="ex-audio" controls class="w-full h-8 accent-[#8b0000]"></audio>
+                <div class="w-10 h-10 bg-[#8b0000] rounded-full flex items-center justify-center animate-pulse">🎧</div>
+                <audio id="ex-audio" controls preload="metadata" playsinline class="w-full h-8 accent-[#8b0000]"></audio>
             </div>
             <p id="ex-desc" class="text-gray-300 font-light leading-relaxed mb-12 text-lg"></p>
-            <div id="seal" class="seal" onclick="openSecret()"><span>ГРИФ СЕКРЕТНО</span></div>
+
+            <div id="seal" class="seal" onclick="openSecret()">
+                <span class="p-2">ГРИФ СЕКРЕТНО РАССЕКРЕТИТЬ</span>
+            </div>
+
             <div id="folder" class="folder">
-                <div class="p-4 border-2 border-black/10">
-                    <p id="ex-secret" class="italic text-sm"></p>
+                <div class="border-2 border-black/10 p-4 rounded-sm">
+                    <p class="text-[10px] uppercase font-black mb-4 border-b border-black/20 pb-2">Архивная выписка №24/б-ПАМЯТЬ</p>
+                    <p id="ex-secret" class="italic leading-loose text-sm"></p>
                 </div>
             </div>
         </div>
@@ -145,25 +174,18 @@
 
     <script>
         let exhibits = [];
-        let html5QrCode;
         const spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSh-Mi4ZmM4ZZZwXsjAkVDUNeRQJPhe_kzWWR0p4GzScVUnkzR4Ci4t_GsSSz22Z0T886mnbJENA21Q/pub?gid=0&single=true&output=csv';
-
-        function parseCSV(text) {
-            const lines = text.split(/\r?\n/);
-            return lines.slice(1).map(line => {
-                const matches = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g);
-                return matches ? matches.map(val => val.replace(/^"|"$/g, '').trim()) : null;
-            }).filter(x => x);
-        }
 
         async function loadData() {
             try {
                 const response = await fetch(`${spreadsheetUrl}&cb=${Date.now()}`);
                 const csvText = await response.text();
-                const data = parseCSV(csvText);
-                exhibits = data.map(cols => ({
-                    id: cols[0], title: cols[1], author: cols[2], img: cols[3], audio: cols[4], desc: cols[5], secret: cols[6]
-                })).filter(ex => ex.id);
+                const lines = csvText.split(/\r?\n/).slice(1);
+                exhibits = lines.map(line => {
+                    const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    const clean = (s) => s ? s.replace(/^"|"$/g, '').trim() : '';
+                    return { id: clean(cols[0]), title: clean(cols[1]), author: clean(cols[2]), img: clean(cols[3]), audio: clean(cols[4]), desc: clean(cols[5]), secret: clean(cols[6]) };
+                }).filter(ex => ex.id);
                 renderHome();
             } catch (e) { console.error('Ошибка:', e); }
         }
@@ -172,11 +194,13 @@
             const listEl = document.getElementById('list');
             const items = dataToRender || exhibits;
             listEl.innerHTML = items.map(ex => `
-                <div onclick="openExhibit('${ex.id}')" class="bg-[#151515] p-5 rounded-2xl flex items-center gap-4 border border-white/5 active:scale-95 transition-all">
-                    <img src="${ex.img}" class="w-16 h-16 object-cover grayscale rounded-xl">
+                <div onclick="openExhibit('${ex.id}')" class="fade-in-up bg-[#151515] p-5 rounded-2xl flex items-center gap-4 border border-white/5 active:scale-95 transition-all">
+                    <div class="w-16 h-16 flex-shrink-0">
+                        <img src="${ex.img}" class="w-full h-full object-cover grayscale rounded-xl">
+                    </div>
                     <div class="flex-1">
-                        <h3 class="font-bold text-white uppercase">${ex.title}</h3>
-                        <p class="text-[11px] text-[#8b0000] font-bold">${ex.author}</p>
+                        <h3 class="font-bold text-base uppercase text-white">${ex.title}</h3>
+                        <p class="text-[11px] text-[#8b0000] uppercase font-bold opacity-80">${ex.author}</p>
                     </div>
                 </div>
             `).join('');
@@ -185,66 +209,66 @@
         function openExhibit(id) {
             const ex = exhibits.find(e => String(e.id).trim() === String(id).trim());
             if (!ex) return;
+
             document.getElementById('ex-title').innerText = ex.title;
             document.getElementById('ex-author').innerText = ex.author;
             document.getElementById('ex-desc').innerText = ex.desc;
             document.getElementById('ex-secret').innerText = ex.secret;
             document.getElementById('ex-img').src = ex.img;
 
+            // Обработка аудио (Google Drive / Dropbox)
             let audioUrl = ex.audio;
             if (audioUrl.includes('drive.google.com')) {
                 const fileId = audioUrl.includes('id=') ? audioUrl.split('id=')[1].split('&')[0] : audioUrl.split('/d/')[1].split('/')[0];
                 audioUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
+            } else if (audioUrl.includes('dropbox.com')) {
+                audioUrl = audioUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('dl=0', 'raw=1');
             }
+            
             const player = document.getElementById('ex-audio');
             player.src = audioUrl;
             player.load();
 
             document.getElementById('photo-box').classList.remove('alive');
             document.getElementById('folder').classList.remove('open');
+            document.getElementById('seal').classList.remove('broken');
             showPage('details');
+        }
+
+        function closeDetails(event) {
+            if(event) { event.stopPropagation(); event.preventDefault(); }
+            document.getElementById('ex-audio').pause();
+            showPage('home');
         }
 
         function showPage(id) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(id).classList.add('active');
-            
-            // Запуск сканера, если перешли на страницу сканера
-            if (id === 'scanner') {
-                startScanner();
-            } else if (html5QrCode) {
-                html5QrCode.stop();
-            }
-        }
-
-        function startScanner() {
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: 250 },
-                (decodedText) => {
-                    // Если в QR просто ID (например '1'), открываем его
-                    openExhibit(decodedText.trim());
-                }
-            ).catch(err => console.error("Ошибка камеры:", err));
-        }
-
-        function closeDetails() {
-            document.getElementById('ex-audio').pause();
-            showPage('home');
+            if(id === 'scanner') startScanner(); else stopScanner();
         }
 
         function openSecret() {
             document.getElementById('details').classList.add('shake');
-            setTimeout(() => document.getElementById('details').classList.remove('shake'), 500);
+            setTimeout(() => document.getElementById('details').classList.remove('shake'), 400);
             document.getElementById('folder').classList.add('open');
             document.getElementById('seal').classList.add('broken');
+            new Audio('https://www.soundjay.com/human/paper-rip-1.mp3').play().catch(()=>{});
         }
 
         function filterExhibits() {
             const q = document.getElementById('searchInput').value.toLowerCase();
             renderHome(exhibits.filter(ex => ex.title.toLowerCase().includes(q) || ex.author.toLowerCase().includes(q)));
         }
+
+        let html5QrCode;
+        function startScanner() {
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (txt) => {
+                const id = txt.includes('id=') ? txt.split('id=').pop().split('&')[0] : txt;
+                openExhibit(id);
+            }).catch(()=>{});
+        }
+        function stopScanner() { if(html5QrCode?.isScanning) html5QrCode.stop().then(() => html5QrCode.clear()); }
 
         window.onload = loadData;
     </script>
