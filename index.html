@@ -103,8 +103,7 @@
         <div class="p-6">
             <div id="audio-ui" class="bg-white/5 p-4 rounded-2xl border border-white/10 mb-8 flex items-center gap-4">
                 <div class="w-10 h-10 bg-[#8b0000] rounded-full flex items-center justify-center animate-pulse text-lg">🎧</div>
-                <div id="player-container" class="flex-1">
-                    </div>
+                <div id="player-container" class="flex-1"></div>
             </div>
 
             <p id="ex-desc" class="text-gray-300 font-light leading-relaxed mb-12 text-lg"></p>
@@ -165,12 +164,12 @@
             document.getElementById('ex-secret').innerText = ex.secret;
             document.getElementById('ex-img').src = ex.img;
 
-            // РЕИНИЦИАЛИЗАЦИЯ ПЛЕЕРА
+            // ФИКС ЗВУКА: Смена download на media для стабильности
             const container = document.getElementById('player-container');
             let aUrl = ex.audio;
             if (aUrl.includes('drive.google.com')) {
                 const fId = aUrl.match(/[-\w]{25,}/);
-                if (fId) aUrl = `https://docs.google.com/uc?export=download&id=${fId[0]}`;
+                if (fId) aUrl = `https://docs.google.com/uc?export=media&id=${fId[0]}`;
             }
             container.innerHTML = `<audio id="ex-audio" controls class="w-full h-8" preload="auto"><source src="${aUrl}" type="audio/mpeg"></audio>`;
             
