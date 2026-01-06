@@ -47,6 +47,31 @@
         .photo-box { position: relative; overflow: hidden; height: 38vh; background: #000; }
         .photo-main { filter: grayscale(1) sepia(0.2); transition: 2s; width: 100%; height: 100%; object-fit: cover; }
         .alive .photo-main { filter: grayscale(0) sepia(0); transform: scale(1.05); }
+        /* ЗАМЕНИ ЭТОТ КЛАСС В STYLE */
+.photo-box { 
+    position: relative; 
+    overflow: hidden; 
+    height: 38vh; 
+    background: #000; 
+}
+
+/* ДОБАВЬ ИЛИ ОБНОВИ ЭТОТ СЛОЙ */
+.photo-box::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    /* Затемнение: снизу плотное, к середине прозрачное */
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
+    pointer-events: none;
+}
+
+.photo-main { 
+    filter: grayscale(1) sepia(0.2); 
+    transition: 2s; 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+}
     </style>
 </head>
 <body>
@@ -219,3 +244,4 @@
     </script>
 </body>
 </html>
+
