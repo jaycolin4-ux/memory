@@ -2,148 +2,190 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Музей Память</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Музей ПАМЯТЬ — Интерактив</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Special+Elite&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        body { background: #1a1a1a; color: white; font-family: sans-serif; }
-        .page { display: none; padding: 20px; }
+        /* АТМОСФЕРА */
+        body::after {
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('https://upload.wikimedia.org/wikipedia/commons/7/76/1k_Noise_Texture.png');
+            opacity: 0.04; pointer-events: none; z-index: 999;
+        }
+        .vignette {
+            position: fixed; inset: 0;
+            background: radial-gradient(circle, transparent 40%, rgba(0, 0, 0, 0.7) 150%);
+            pointer-events: none; z-index: 50;
+        }
+        :root { --red: #8b0000; --paper: #d2c1a5; }
+
+        html, body { height: 100%; background: #0a0a0a; color: #e5e5e5; margin: 0; overflow: hidden; font-family: 'Roboto', sans-serif; }
+        h1, h2 { font-family: 'Playfair Display', serif; }
+
+        .page { display: none; height: 100vh; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 180px; position: relative; }
         .page.active { display: block; }
-        .exhibit-card { background: #222; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
-        #reader { width: 100%; max-width: 400px; margin: auto; }
-        img { max-width: 100%; border-radius: 8px; }
-        /* Тень под текстом, чтобы на фото было видно */
-        .photo-container { position: relative; }
-        .text-overlay { 
-            position: absolute; bottom: 0; left: 0; right: 0; 
-            background: linear-gradient(transparent, rgba(0,0,0,0.8)); 
-            padding: 20px; 
+
+        /* АНИМАЦИИ */
+        .fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ИНДИКАТОР */
+        .status-dot { width: 8px; height: 8px; background: #ff0000; border-radius: 50%; box-shadow: 0 0 10px #ff0000; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        /* СКАНЕР */
+        #reader { width: 300px !important; height: 300px !important; margin: 0 auto; border-radius: 24px; overflow: hidden; border: 2px solid var(--red); box-shadow: 0 0 30px rgba(139, 0, 0, 0.3); }
+        #reader video { object-fit: cover !important; height: 100% !important; width: 100% !important; }
+
+        /* КАРТОЧКА ГРИФА */
+        .folder { background: var(--paper); color: #2d2419; font-family: 'Special Elite', serif; max-height: 0; opacity: 0; overflow: hidden; transition: all 0.8s ease; border-radius: 4px; box-shadow: inset 0 0 30px rgba(0,0,0,0.2); }
+        .folder.open { max-height: 2000px; opacity: 1; padding: 25px; margin-top: 40px; border: 1px solid #bba689; }
+        .seal { width: 85px; height: 85px; background: #900; border: 4px double #500; border-radius: 50%; color: white; font-size: 9px; font-weight: bold; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; margin: 0 auto; position: relative; z-index: 20; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4); }
+
+        .photo-box { position: relative; overflow: hidden; height: 38vh; background: #000; }
+        .photo-main { filter: grayscale(1) sepia(0.2); transition: 2s; width: 100%; height: 100%; object-fit: cover; }
+        .alive .photo-main { filter: grayscale(0) sepia(0); transform: scale(1.05); }
+
+        /* Тень для текста */
+        #ex-title { text-shadow: 2px 2px 10px rgba(0,0,0,1); }
+        #ex-author { text-shadow: 1px 1px 5px rgba(0,0,0,1); }
+        
+        .photo-box::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
+    <div class="vignette"></div>
 
-    <nav style="position: fixed; bottom: 0; width: 100%; background: #000; display: flex; justify-content: space-around; padding: 15px; z-index: 100;">
-        <button onclick="showPage('home')">Список</button>
-        <button onclick="showPage('scanner')">Сканер</button>
+    <nav class="fixed bottom-0 w-full bg-black/95 border-t border-white/10 flex justify-around p-5 z-[1000] backdrop-blur-lg">
+        <button onclick="showPage('home')" class="flex flex-col items-center gap-1">
+            <span class="text-xl">📂</span><span class="text-[9px] uppercase tracking-widest opacity-60">Архив</span>
+        </button>
+        <button onclick="showPage('scanner')" class="bg-[#8b0000] p-5 -mt-12 rounded-full border-4 border-[#0a0a0a] shadow-2xl">
+            <span class="text-xl">📷</span>
+        </button>
+        <button onclick="alert('Скоро')" class="flex flex-col items-center gap-1">
+            <span class="text-xl">🎧</span><span class="text-[9px] uppercase tracking-widest opacity-60">Голос</span>
+        </button>
     </nav>
 
-    <div id="home" class="page active">
-        <h1>Архив экспонатов</h1>
-        <div id="list">Загрузка...</div>
+    <div id="home" class="page active p-6">
+        <div class="flex items-center gap-3 mb-6 fade-in-up">
+            <div class="status-dot"></div>
+            <span class="text-[10px] uppercase tracking-[3px] font-bold text-white/50">Соединение...</span>
+        </div>
+        <h1 class="text-4xl uppercase font-bold tracking-tighter mb-8">Музей<br><span class="text-[#8b0000]">Память</span></h1>
+        <div id="list" class="space-y-4"></div>
     </div>
 
-    <div id="scanner" class="page">
-        <h2>Наведите камеру на код</h2>
-        <div id="reader"></div>
-        <button onclick="showPage('home')" style="margin-top: 20px;">Назад</button>
+    <div id="scanner" class="page p-6 text-center">
+        <div id="reader" class="mt-20"></div>
+        <button onclick="showPage('home')" class="mt-10 opacity-50 uppercase text-xs">Назад</button>
     </div>
 
     <div id="details" class="page">
-        <button onclick="showPage('home')" style="margin-bottom: 10px;">← Назад</button>
-        <div class="photo-container">
-            <img id="ex-img" src="" alt="">
-            <div class="text-overlay">
-                <h2 id="ex-title" style="font-size: 24px; margin: 0;"></h2>
-                <p id="ex-author" style="color: #ff3333; margin: 0;"></p>
+        <div id="photo-box" class="photo-box" onclick="this.classList.toggle('alive')">
+            <img id="ex-img" class="photo-main" src="">
+            <button onclick="closeDetails()" class="absolute top-6 left-6 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white z-20">✕</button>
+            <div class="absolute bottom-6 left-6 right-6 z-10">
+                <h2 id="ex-title" class="text-3xl font-bold uppercase leading-tight text-white"></h2>
+                <p id="ex-author" class="text-[#8b0000] font-bold text-xs uppercase mt-1 tracking-widest"></p>
             </div>
         </div>
-        <div id="player-container" style="margin: 20px 0;"></div>
-        <p id="ex-desc" style="line-height: 1.6; color: #ccc;"></p>
+        
+        <div class="p-6">
+            <div id="player-container" class="mb-8"></div>
+            <p id="ex-desc" class="text-gray-300 leading-relaxed mb-12 text-lg"></p>
+            <div id="seal" class="seal" onclick="openSecret()">ГРИФ СЕКРЕТНО<br>РАССЕКРЕТИТЬ</div>
+            <div id="folder" class="folder">
+                <div class="border-2 border-black/10 p-4">
+                    <p id="ex-secret" class="italic text-sm"></p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         let exhibits = [];
         const spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSh-Mi4ZmM4ZZZwXsjAkVDUNeRQJPhe_kzWWR0p4GzScVUnkzR4Ci4t_GsSSz22Z0T886mnbJENA21Q/pub?gid=0&single=true&output=csv';
 
-        // ЗАГРУЗКА ДАННЫХ
         async function loadData() {
             try {
                 const res = await fetch(spreadsheetUrl + '&cache=' + Date.now());
                 const text = await res.text();
                 const rows = text.split('\n').slice(1);
                 exhibits = rows.map(row => {
-                    const cols = row.split(','); // Самый простой парсинг
-                    return { id: cols[0], title: cols[1], author: cols[2], img: cols[3], audio: cols[4], desc: cols[5] };
-                });
+                    const cols = row.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^$)/g) || [];
+                    const clean = (s) => s ? s.replace(/^"|"$/g, '').trim() : '';
+                    return { id: clean(cols[0]), title: clean(cols[1]), author: clean(cols[2]), img: clean(cols[3]), audio: clean(cols[4]), desc: clean(cols[5]), secret: clean(cols[6]) };
+                }).filter(x => x.id);
                 renderHome();
-            } catch (e) {
-                document.getElementById('list').innerText = "Ошибка загрузки данных";
-            }
+            } catch (e) { console.error(e); }
         }
 
-        // СПИСОК НА ГЛАВНОЙ
         function renderHome() {
-            const listDiv = document.getElementById('list');
-            listDiv.innerHTML = exhibits.map(ex => `
-                <div class="exhibit-card" onclick="openExhibit('${ex.id}')">
-                    <strong>${ex.title}</strong><br>
-                    <small>${ex.author}</small>
-                </div>
-            `).join('');
+            document.getElementById('list').innerHTML = exhibits.map(ex => `
+                <div onclick="openExhibit('${ex.id}')" class="bg-[#151515] p-5 rounded-2xl flex items-center gap-4 border border-white/5">
+                    <img src="${ex.img}" class="w-16 h-16 object-cover grayscale rounded-xl">
+                    <div class="flex-1">
+                        <h3 class="font-bold text-white uppercase">${ex.title}</h3>
+                        <p class="text-[10px] text-[#8b0000] font-bold uppercase">${ex.author}</p>
+                    </div>
+                </div>`).join('');
         }
 
-        // ОТКРЫТЬ ЭКСПОНАТ
         function openExhibit(id) {
-            const ex = exhibits.find(e => String(e.id).trim() === String(id).trim());
-            if (!ex) {
-                alert("Экспонат не найден: " + id);
-                return;
-            }
+            const ex = exhibits.find(e => String(e.id).trim().toLowerCase() === String(id).trim().toLowerCase());
+            if (!ex) return;
 
             document.getElementById('ex-title').innerText = ex.title;
             document.getElementById('ex-author').innerText = ex.author;
             document.getElementById('ex-desc').innerText = ex.desc;
+            document.getElementById('ex-secret').innerText = ex.secret;
             document.getElementById('ex-img').src = ex.img;
 
-            // ИСПРАВЛЕНИЕ ССЫЛКИ DROPBOX
-            let audioUrl = ex.audio.trim();
-            if (audioUrl.includes('dropbox.com')) {
-                audioUrl = audioUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '');
+            let aUrl = ex.audio.trim();
+            if (aUrl.includes('dropbox.com')) {
+                aUrl = aUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com').split('?')[0];
             }
 
             document.getElementById('player-container').innerHTML = `
-                <audio controls style="width: 100%;">
-                    <source src="${audioUrl}" type="audio/mpeg">
-                    <source src="${audioUrl}" type="audio/flac">
-                    Ваш браузер не поддерживает аудио.
+                <audio id="ex-audio" controls class="w-full h-10">
+                    <source src="${aUrl}" type="audio/mpeg">
+                    <source src="${aUrl}" type="audio/flac">
                 </audio>`;
 
+            document.getElementById('folder').classList.remove('open');
             showPage('details');
         }
 
-        // ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ
         function showPage(id) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(id).classList.add('active');
-            
-            if (id === 'scanner') {
-                startScanner();
-            } else {
-                stopScanner();
-            }
+            if (id === 'scanner') startScanner(); else stopScanner();
         }
 
-        // СКАНЕР
-        let html5QrCode;
+        function openSecret() { document.getElementById('folder').classList.add('open'); }
+        function closeDetails() { 
+            const a = document.getElementById('ex-audio');
+            if(a) a.pause();
+            showPage('home'); 
+        }
+
+        let scanner;
         function startScanner() {
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 10, qrbox: 250 },
-                (decodedText) => {
-                    stopScanner();
-                    openExhibit(decodedText);
-                }
-            ).catch(err => console.error(err));
+            scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => {
+                stopScanner();
+                openExhibit(text);
+            });
         }
-
-        function stopScanner() {
-            if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().then(() => html5QrCode.clear());
-            }
-        }
+        function stopScanner() { if (scanner) scanner.stop(); }
 
         window.onload = loadData;
     </script>
