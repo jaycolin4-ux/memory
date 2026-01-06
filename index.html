@@ -204,104 +204,117 @@
         </div>
     </div>
 
-    <script>
-        let exhibits = [];
-        const spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSh-Mi4ZmM4ZZZwXsjAkVDUNeRQJPhe_kzWWR0p4GzScVUnkzR4Ci4t_GsSSz22Z0T886mnbJENA21Q/pub?gid=0&single=true&output=csv';
+<script>
+    let exhibits = [];
+    const spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSh-Mi4ZmM4ZZZwXsjAkVDUNeRQJPhe_kzWWR0p4GzScVUnkzR4Ci4t_GsSSz22Z0T886mnbJENA21Q/pub?gid=0&single=true&output=csv';
 
-        async function loadData() {
-            try {
-                const res = await fetch(`${spreadsheetUrl}&cb=${Date.now()}`);
-                const text = await res.text();
-                const rows = text.split('\n').slice(1);
-                exhibits = rows.map(row => {
-                    const cols = row.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^$)/g) || [];
-                    const clean = (s) => s ? s.replace(/^"|"$/g, '').trim() : '';
-                    return { id: clean(cols[0]), title: clean(cols[1]), author: clean(cols[2]), img: clean(cols[3]), audio: clean(cols[4]), desc: clean(cols[5]), secret: clean(cols[6]) };
-                }).filter(x => x.id && x.title);
-                renderHome();
-            } catch (e) { console.error(e); }
+    async function loadData() {
+        try {
+            const res = await fetch(`${spreadsheetUrl}&cb=${Date.now()}`);
+            const text = await res.text();
+            const rows = text.split('\n').slice(1);
+            exhibits = rows.map(row => {
+                const cols = row.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^$)/g) || [];
+                const clean = (s) => s ? s.replace(/^"|"$/g, '').trim() : '';
+                return { id: clean(cols[0]), title: clean(cols[1]), author: clean(cols[2]), img: clean(cols[3]), audio: clean(cols[4]), desc: clean(cols[5]), secret: clean(cols[6]) };
+            }).filter(x => x.id && x.title);
+            renderHome();
+        } catch (e) { console.error("Ошибка загрузки данных", e); }
+    }
+
+    function renderHome(data = exhibits) {
+        document.getElementById('list').innerHTML = data.map((ex, i) => `
+            <div onclick="openExhibit('${ex.id}')" 
+                 class="fade-in-up bg-[#151515] p-5 rounded-2xl flex items-center gap-4 border border-white/5 active:scale-95 transition-all"
+                 style="animation-delay: ${0.1 + (i*0.05)}s">
+                <div class="w-16 h-16 flex-shrink-0">
+                    <img src="${ex.img}" class="w-full h-full object-cover grayscale rounded-xl shadow-lg">
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-bold text-base uppercase text-white leading-tight">${ex.title}</h3>
+                    <p class="text-[10px] text-[#8b0000] mt-1 font-bold uppercase tracking-wider">${ex.author}</p>
+                </div>
+                <span class="text-white/20">→</span>
+            </div>`).join('');
+    }
+
+    function filterExhibits() {
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        renderHome(exhibits.filter(ex => ex.title.toLowerCase().includes(q) || ex.author.toLowerCase().includes(q)));
+    }
+
+    function showPage(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if (id === 'scanner') startScanner(); else stopScanner();
+    }
+
+    function openExhibit(id) {
+        const ex = exhibits.find(e => String(e.id).toLowerCase().trim() === String(id).toLowerCase().trim());
+        if (!ex) return;
+
+        // Элементы интерфейса
+        document.getElementById('ex-title').innerText = ex.title;
+        document.getElementById('ex-author').innerText = ex.author;
+        document.getElementById('ex-desc').innerText = ex.desc;
+        document.getElementById('ex-secret').innerText = ex.secret;
+        document.getElementById('ex-img').src = ex.img;
+
+        // ЛОГИКА ПЛЕЕРА (ФИКС)
+        let aUrl = ex.audio;
+        if (aUrl.includes('drive.google.com')) {
+            const fId = aUrl.match(/[-\w]{25,}/);
+            // Используем export=open для лучшей совместимости с мобильным Safari
+            if (fId) aUrl = `https://docs.google.com/uc?export=open&id=${fId[0]}`;
         }
+        
+        const player = document.getElementById('ex-audio');
+        player.pause(); // Сброс текущего трека
+        player.src = aUrl;
+        player.load(); // Принудительная подгрузка метаданных
 
-        function renderHome(data = exhibits) {
-            document.getElementById('list').innerHTML = data.map((ex, i) => `
-                <div onclick="openExhibit('${ex.id}')" 
-                     class="fade-in-up bg-[#151515] p-5 rounded-2xl flex items-center gap-4 border border-white/5 active:scale-95 transition-all"
-                     style="animation-delay: ${0.1 + (i*0.05)}s">
-                    <div class="w-16 h-16 flex-shrink-0">
-                        <img src="${ex.img}" class="w-full h-full object-cover grayscale rounded-xl shadow-lg">
-                    </div>
-                    <div class="flex-1">
-                        <h3 class="font-bold text-base uppercase text-white leading-tight">${ex.title}</h3>
-                        <p class="text-[10px] text-[#8b0000] mt-1 font-bold uppercase tracking-wider">${ex.author}</p>
-                    </div>
-                    <span class="text-white/20">→</span>
-                </div>`).join('');
-        }
+        // Важно: на некоторых телефонах нужно дождаться клика, но мы подготавливаем плеер
+        player.oncanplaythrough = () => { console.log("Файл готов к игре"); };
+        player.onerror = () => { console.error("Ошибка загрузки файла:", player.src); };
 
-        function filterExhibits() {
-            const q = document.getElementById('searchInput').value.toLowerCase();
-            renderHome(exhibits.filter(ex => ex.title.toLowerCase().includes(q) || ex.author.toLowerCase().includes(q)));
-        }
+        document.getElementById('photo-box').classList.remove('alive');
+        document.getElementById('folder').classList.remove('open');
+        document.getElementById('seal').classList.remove('broken');
+        showPage('details');
+    }
 
-        function showPage(id) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            if (id === 'scanner') startScanner(); else stopScanner();
-        }
+    function openSecret() {
+        document.getElementById('details').classList.add('shake');
+        setTimeout(() => document.getElementById('details').classList.remove('shake'), 500);
+        document.getElementById('folder').classList.add('open');
+        document.getElementById('seal').classList.add('broken');
+        // Звук разрыва бумаги
+        const rip = new Audio('https://www.soundjay.com/human/paper-rip-1.mp3');
+        rip.volume = 0.5;
+        rip.play().catch(()=>{});
+    }
 
-        function openExhibit(id) {
-            const ex = exhibits.find(e => String(e.id).toLowerCase().trim() === String(id).toLowerCase().trim());
-            if (!ex) return;
+    function closeDetails() {
+        const player = document.getElementById('ex-audio');
+        player.pause();
+        player.src = ""; // Очистка памяти
+        showPage('home');
+    }
 
-            if (window.navigator.vibrate) window.navigator.vibrate(50);
+    let scanner;
+    function startScanner() {
+        scanner = new Html5Qrcode("reader");
+        scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, (text) => {
+            let id = text.includes('id=') ? text.split('id=').pop().split('&')[0] : text.trim();
+            stopScanner();
+            openExhibit(id);
+        }).catch(err => console.error(err));
+    }
 
-            document.getElementById('ex-title').innerText = ex.title;
-            document.getElementById('ex-author').innerText = ex.author;
-            document.getElementById('ex-desc').innerText = ex.desc;
-            document.getElementById('ex-secret').innerText = ex.secret;
-            document.getElementById('ex-img').src = ex.img;
+    function stopScanner() { if (scanner && scanner.isScanning) { scanner.stop().then(() => scanner.clear()); } }
 
-            let aUrl = ex.audio;
-            if (aUrl.includes('drive.google.com')) {
-                const fId = aUrl.match(/[-\w]{25,}/);
-                if (fId) aUrl = `https://docs.google.com/uc?export=download&id=${fId[0]}`;
-            }
-            const player = document.getElementById('ex-audio');
-            player.src = aUrl;
-            player.load();
-
-            document.getElementById('photo-box').classList.remove('alive');
-            document.getElementById('folder').classList.remove('open');
-            document.getElementById('seal').classList.remove('broken');
-            showPage('details');
-        }
-
-        function openSecret() {
-            document.getElementById('details').classList.add('shake');
-            setTimeout(() => document.getElementById('details').classList.remove('shake'), 500);
-            document.getElementById('folder').classList.add('open');
-            document.getElementById('seal').classList.add('broken');
-            new Audio('https://www.soundjay.com/human/paper-rip-1.mp3').play().catch(()=>{});
-        }
-
-        function closeDetails() {
-            document.getElementById('ex-audio').pause();
-            showPage('home');
-        }
-
-        let scanner;
-        function startScanner() {
-            scanner = new Html5Qrcode("reader");
-            scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, (text) => {
-                let id = text.includes('id=') ? text.split('id=').pop().split('&')[0] : text.trim();
-                stopScanner();
-                openExhibit(id);
-            }).catch(err => console.error(err));
-        }
-
-        function stopScanner() { if (scanner && scanner.isScanning) { scanner.stop().then(() => scanner.clear()); } }
-
-        window.onload = loadData;
-    </script>
+    window.onload = loadData;
+</script>
 </body>
 </html>
+
